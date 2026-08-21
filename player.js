@@ -83,7 +83,9 @@
       if(mode==="wipe") wipe.style.display="";
       wipe.oninput=function(){ stage.style.setProperty("--w",wipe.value+"%"); };
       // drag anywhere on the stage to move the wipe line (wipe mode only)
+      var pdX=0, pdY=0, pdT=0;
       stage.addEventListener("pointerdown",function(ev){
+        pdX=ev.clientX; pdY=ev.clientY; pdT=Date.now();
         if(mode!=="wipe") return;
         stage.setPointerCapture(ev.pointerId);
         function move(e){
@@ -95,6 +97,12 @@
         move(ev);
         stage.onpointermove=move;
         stage.onpointerup=function(){ stage.onpointermove=null; stage.onpointerup=null; };
+      });
+      stage.addEventListener("click",function(ev){
+        // a click on the picture toggles playback; a wipe DRAG must not
+        if(Math.abs(ev.clientX-pdX)>4 || Math.abs(ev.clientY-pdY)>4) return;
+        if(Date.now()-pdT>400) return;
+        u.setPlay(u.va.paused);
       });
 
       function sync(from,to){ if(Math.abs(from.currentTime-to.currentTime)>0.3) to.currentTime=from.currentTime; }
@@ -171,6 +179,7 @@
         fnum.textContent="frame "+Math.round(t*24);
       };
       open=u;
+      if(c.dataset.start==="b" && mode==="flip" && !u.showb) u.doFlip();
       u.setPlay(true);
       c.scrollIntoView({behavior:"smooth",block:"nearest"});
     }

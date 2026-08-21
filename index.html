@@ -180,7 +180,15 @@ function drawRefs(){
     bar.appendChild(b);
   });
 }
-function addRef(pre){ if(!pinned.includes(pre)) pinned.push(pre); ref=pre; save(); draw(); }
+function addRef(pre){
+  const prevB = openB && openB!==pre ? openB : null;
+  if(!pinned.includes(pre)) pinned.push(pre);
+  ref=pre; save(); draw();
+  // the new reference is what you just asked for, so show it: A, playing
+  const other = prevB || inSubj().filter(passes).find(r=>r.pre!==pre);
+  if(other) show(other.pre ? other.pre : other, 'a');
+}
+let openB=null;
 
 function draw(){
   drawRefs();
@@ -209,17 +217,18 @@ function draw(){
   document.getElementById('tbl').innerHTML=h;
   document.querySelectorAll('#tbl tr[data-pre]').forEach(tr=>tr.onclick=()=>show(tr.dataset.pre));
   document.querySelectorAll('.addref').forEach(b=>b.onclick=e=>{e.stopPropagation();addRef(b.dataset.add);});
-  document.getElementById('player').innerHTML='';
+  document.getElementById('player').innerHTML=''; openB=null;
 }
 
-function show(pre){
+function show(pre,startOn){
   if(pre===ref) return;
   const r=DATA.rows.find(x=>x.pre===pre), R=DATA.rows.find(x=>x.pre===ref);
   if(r.scene!==R.scene) return;                     // never across subjects
   const p=(r.psnr&&r.mp===R.mp)?r.psnr[ref]:null;
   const host=document.getElementById('player');
   if(window.ReviewPlayer) window.ReviewPlayer.closeOpen();
-  host.innerHTML=`<div class="cmp" data-a="media/${R.pre}_00001_.mp4" data-b="media/${r.pre}_00001_.mp4"
+  host.innerHTML=`<div class="cmp" data-start="${startOn||'b'}"
+      data-a="media/${R.pre}_00001_.mp4" data-b="media/${r.pre}_00001_.mp4"
       data-la="${R.label}" data-lb="${r.label}">
       <div class="chead"><h3 class="ctitle">${R.label} &nbsp;vs&nbsp; ${r.label}</h3>
         <span class="dnum">${R.wall.toFixed(1)}s &middot; ${r.wall.toFixed(1)}s</span>
@@ -230,6 +239,7 @@ function show(pre){
   mk.textContent='Make B ('+r.label+') a reference';
   mk.onclick=()=>addRef(r.pre);
   host.querySelector('.cmp').appendChild(mk);
+  openB=r.pre;
   window.ReviewPlayer.rescan();
   const sh=host.querySelector('.shelf'); if(sh) sh.click();
   window.scrollTo({top:0,behavior:'smooth'});
