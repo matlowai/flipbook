@@ -107,7 +107,7 @@ function defaultRef(){
   return (c.find(r=>/w bf16/.test(r.label)) || c.find(r=>/a0 stock/.test(r.label)) || c[0]).pre;
 }
 function save(){ try{
-  localStorage.setItem('cmpState',JSON.stringify({subject,ref,pinned}));}catch(e){} }
+  localStorage.setItem('cmpState',JSON.stringify({subject,ref,pinned,openB}));}catch(e){} }
 
 // ---- subject: single-select, and it hard-scopes everything below it
 const subSel=document.getElementById('subject');
@@ -116,7 +116,24 @@ const subSel=document.getElementById('subject');
   o.textContent=`${s} (${DATA.rows.filter(r=>r.scene===s).length})`; subSel.appendChild(o);
 });
 subSel.onchange=()=>{ subject=subSel.value; pinned=[defaultRef()]; ref=pinned[0];
-                      buildFacets(); draw(); };
+                      buildFacets(); draw();
+
+// Arrive with a pair already running: a table of numbers does not explain what
+// this page is for, and one flip does. Prefers the full-precision build against
+// the 8-bit one -- the clearest pair on the board -- and restores whatever you
+// had open last instead, once you have opened something.
+(function autoOpen(){
+  let want=null;
+  try{ const st=JSON.parse(localStorage.getItem('cmpState')||'null');
+       if(st&&st.subject===subject&&st.openB&&inSubj().some(r=>r.pre===st.openB)) want=st.openB;
+  }catch(e){}
+  if(!want){
+    const c=inSubj();
+    const i8=c.find(r=>/int8convrot/.test(r.pre));
+    want=(i8&&i8.pre!==ref)?i8.pre:(c.find(r=>r.pre!==ref)||{}).pre;
+  }
+  if(want) show(want,'a');
+})(); };
 
 // ---- restore
 try{ const st=JSON.parse(localStorage.getItem('cmpState')||'null');
@@ -239,12 +256,29 @@ function show(pre,startOn){
   mk.textContent='Make B ('+r.label+') a reference';
   mk.onclick=()=>addRef(r.pre);
   host.querySelector('.cmp').appendChild(mk);
-  openB=r.pre;
+  openB=r.pre; save();
   window.ReviewPlayer.rescan();
   const sh=host.querySelector('.shelf'); if(sh) sh.click();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
 buildFacets(); draw();
+
+// Arrive with a pair already running: a table of numbers does not explain what
+// this page is for, and one flip does. Prefers the full-precision build against
+// the 8-bit one -- the clearest pair on the board -- and restores whatever you
+// had open last instead, once you have opened something.
+(function autoOpen(){
+  let want=null;
+  try{ const st=JSON.parse(localStorage.getItem('cmpState')||'null');
+       if(st&&st.subject===subject&&st.openB&&inSubj().some(r=>r.pre===st.openB)) want=st.openB;
+  }catch(e){}
+  if(!want){
+    const c=inSubj();
+    const i8=c.find(r=>/int8convrot/.test(r.pre));
+    want=(i8&&i8.pre!==ref)?i8.pre:(c.find(r=>r.pre!==ref)||{}).pre;
+  }
+  if(want) show(want,'a');
+})();
 </script>
 <script src="player.js"></script>
