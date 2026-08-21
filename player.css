@@ -1,0 +1,54 @@
+/* shared A/B player: stage modes, panes, tags, controls, poster shelf.
+   Extracted from clips.html so both review pages run ONE player -- the
+   no-continuous-sync and re-assert-play fixes live here, not in two copies. */
+.stage{position:relative;background:#000;border-radius:8px;overflow:hidden;
+  display:grid;gap:2px}
+.stage.side{grid-template-columns:1fr 1fr}
+.stage.flip{grid-template-columns:1fr}
+.pane{position:relative;min-width:0;background:#000}
+.stage.flip .pane{grid-area:1/1}
+.stage.flip .pane.b{display:none}
+.stage.flip.showb .pane.a{display:none}
+.stage.flip.showb .pane.b{display:block}
+/* wipe: both panes stacked, B clipped from the left at --w, bakery-style */
+.stage.wipe{grid-template-columns:1fr}
+.stage.wipe .pane{grid-area:1/1;display:block}
+.stage.wipe .pane.b{clip-path:inset(0 0 0 var(--w,50%))}
+.stage.wipe::after{content:"";position:absolute;top:0;bottom:0;left:var(--w,50%);
+  width:2px;background:var(--accent);pointer-events:none;z-index:2}
+.stage.wipe .tag.b{left:auto;right:8px}
+.stage.wipe{cursor:col-resize}
+.wipeslider{flex:1;min-width:140px;accent-color:var(--accent)}
+video{width:100%;height:auto;display:block}
+.tag{position:absolute;top:8px;left:8px;font-family:var(--sans);font-size:11px;
+  font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:4px 9px;
+  border-radius:5px;background:rgba(15,19,21,.82);color:#fff;pointer-events:none;
+  backdrop-filter:blur(3px)}
+.tag.a{border-left:3px solid var(--accent)}
+.tag.b{border-left:3px solid var(--open)}
+.crow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.scrub{flex:1;min-width:180px;accent-color:var(--accent)}
+.fnum{font-family:var(--mono);font-size:12px;color:var(--muted);
+  font-variant-numeric:tabular-nums;min-width:74px}
+.mini{font-family:var(--sans);font-size:11.5px;font-weight:600;color:var(--ink-2);
+  background:var(--surface-2);border:1px solid var(--line);padding:5px 10px;
+  border-radius:5px;cursor:pointer}
+.mini:hover{border-color:var(--accent);color:var(--accent)}
+.mini.on{background:var(--accent);color:#0F1315;border-color:var(--accent)}
+.mini:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+footer{margin-top:50px;padding-top:20px;border-top:1px solid var(--line);
+  font-family:var(--mono);font-size:12px;color:var(--muted);line-height:1.9}
+@media(max-width:820px){.stage.side{grid-template-columns:1fr}}
+/* poster shelf: what a pair looks like BEFORE any video exists */
+.shelf{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:#000;
+  border-radius:8px;overflow:hidden;cursor:pointer;position:relative}
+.shelf img{width:100%;height:auto;display:block;opacity:.86}
+.shelf:hover img{opacity:1}
+.shelf:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.pshell{position:relative;min-width:0}
+.openbadge{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  font-family:var(--sans);font-size:13px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;background:rgba(15,19,21,.88);color:#fff;
+  padding:11px 20px;border-radius:8px;border:1px solid var(--accent);
+  pointer-events:none;backdrop-filter:blur(4px)}
+.warn{background:var(--open-soft);border:1px solid var(--open);border-left:4px solid var(--open);
