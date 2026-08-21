@@ -131,8 +131,17 @@
         try{ va.currentTime=0; vb.currentTime=0; }catch(e){}
         [va.play(), vb.play()].forEach(function(pr){
           if(pr&&pr.catch) pr.catch(function(){
-            // browser refused unmuted autoplay: fall back muted, stay playing
+            // browser refused unmuted autoplay (no user gesture yet, e.g. the
+            // pair the page opens by itself): play muted for now and unmute on
+            // the first click or key anywhere, the earliest the browser allows.
             u.muted=true; u.applyAudio(); va.play(); vb.play();
+            var unmute=function(){
+              document.removeEventListener("pointerdown",unmute,true);
+              document.removeEventListener("keydown",unmute,true);
+              if(u.live && u.muted){ u.muted=false; u.applyAudio(); u.ensurePlaying(); }
+            };
+            document.addEventListener("pointerdown",unmute,true);
+            document.addEventListener("keydown",unmute,true);
           });
         });
       }
