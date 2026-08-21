@@ -55,7 +55,7 @@
       var A=document.createElement("div"); A.className="pane a";
       var B=document.createElement("div"); B.className="pane b";
       var va=document.createElement("video"), vb=document.createElement("video");
-      [va,vb].forEach(function(v){ v.preload="none"; v.playsInline=true;
+      [va,vb].forEach(function(v){ v.preload="auto"; v.playsInline=true;
         v.loop=looping; v.muted=true; });
       va.poster=pa; vb.poster=pb; va.src=u.a; vb.src=u.b;
       A.innerHTML='<span class="tag a">A &middot; '+c.dataset.la+'</span>';
@@ -120,16 +120,40 @@
         mute.textContent = u.muted ? "Unmute" : "Mute";
         mute.classList.toggle("on", u.muted);
       };
+      // Fully buffered = the whole clip is in the browser; only then is a seek
+      // or a start free of stalls. Clips here are a few MB, so this is quick.
+      function whole(v){
+        try{ var b=v.buffered; return v.duration>0 && b.length>0 && b.end(b.length-1)>=v.duration-0.25; }
+        catch(e){ return false; }
+      }
+      function startTogether(){
+        // both sides from frame 0 in the same tick, so neither has to chase
+        try{ va.currentTime=0; vb.currentTime=0; }catch(e){}
+        [va.play(), vb.play()].forEach(function(pr){
+          if(pr&&pr.catch) pr.catch(function(){
+            // browser refused unmuted autoplay: fall back muted, stay playing
+            u.muted=true; u.applyAudio(); va.play(); vb.play();
+          });
+        });
+      }
       u.setPlay=function(on){
         if(on){
           u.applyAudio();
-          [va.play(), vb.play()].forEach(function(pr){
-            if(pr&&pr.catch) pr.catch(function(){
-              // browser refused unmuted autoplay: fall back muted, stay playing
-              u.muted=true; u.applyAudio(); va.play(); vb.play();
-            });
-          });
           play.textContent="Pause"; play.classList.add("on");
+          if(u.started){ va.play(); vb.play(); return; }
+          // First start: wait until BOTH sides are buffered end to end (or
+          // 6 s, whichever first), then start them together. Starting each
+          // side as soon as it had "some data" and seeking B after A was the
+          // 2-3 jerky loops after every pick (operator 2026-08-21).
+          u.started=true; play.textContent="Loading";
+          var t0=Date.now();
+          var waitBoth=setInterval(function(){
+            if(!u.live){ clearInterval(waitBoth); return; }
+            if((whole(va)&&whole(vb)) || Date.now()-t0>6000){
+              clearInterval(waitBoth);
+              if(play.classList.contains("on")){ play.textContent="Pause"; startTogether(); }
+            }
+          },100);
         }
         else { va.pause(); vb.pause(); play.textContent="Play"; play.classList.remove("on"); }
       };
@@ -174,20 +198,23 @@
       // 57-frame A's clock replays B's first 2.4 s forever (seen 2026-08-21).
       // Threshold 0.1 s = 2+ frames at 24 fps; one frame would seek every
       // tick and stutter on its own.
-      u.resync=setInterval(function(){
-        if(!u.live||u.va.paused) return;
-        var da=u.va.duration||0, db=u.vb.duration||0;
-        if(!da||!db||Math.abs(da-db)>0.08) return;
-        var ta=u.va.currentTime, tb=u.vb.currentTime;
-        if(Math.abs(ta-tb)>0.1 && Math.abs(ta-tb)<da-0.2) u.vb.currentTime=ta;
-      },500);
+      // Drift correction happens ONCE per loop, at A's wrap, and only when both
+      // sides are fully buffered and the same length: one cheap seek of B to
+      // A's clock, never a seek into unbuffered data, never a short A dragging
+      // a long B back to its start. A 500 ms interval doing this continuously
+      // was the stutter (2026-08-21).
+      u.lastTa=0;
       va.addEventListener("timeupdate",function(){
         if(!u.dur) return;
-        scrub.value=Math.round(va.currentTime/u.dur*1000);
+        var ta=va.currentTime;
+        if(ta<u.lastTa-0.5 && !va.paused && whole(va) && whole(vb)
+           && Math.abs((va.duration||0)-(vb.duration||0))<=0.08){
+          var tb=vb.currentTime%(vb.duration||1);
+          if(Math.abs(tb-ta)>0.1 && Math.abs(tb-ta)<va.duration-0.2) vb.currentTime=ta;
+        }
+        u.lastTa=ta;
+        scrub.value=Math.round(ta/u.dur*1000);
         fnum.textContent="frame "+frameOf(va);
-        // no continuous B-sync: same-duration clips wrap together on loop, and
-        // force-seeking B at the wrap was the only-B stutter. Flip and scrub
-        // still hard-resync.
       });
       scrub.oninput=function(){
         if(!u.dur) return;
