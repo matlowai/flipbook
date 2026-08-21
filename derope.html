@@ -45,7 +45,8 @@ same arms sit far lower.
 <br><b>Every LTX arm is a WINDOW, not the whole clip.</b> The DiT's time axis is 20 s, so at d=16 the
 largest legal source window is 57 frames (913 dilated = 19.02 s); 73 frames would be 24.35 s and the
 minter refuses it. Swordspin arms are 57 frames from 16 (of 73), panrun arms 57 frames from 39 (of 124,
-the parasol burst). The default reference is the source <i>cut to that same window</i>, so an A/B starts
+the parasol burst). The default reference is the source <i>cut to that same window</i>; clicking a
+full-length arm (124 / 73 frames) switches the reference to the full-length source or baseline, so an A/B starts
 on the same frame - picking the full-length baseline instead will look misaligned, and that is the
 windowing, not a broken render.
 </div>
@@ -115,9 +116,25 @@ function draw(){
     if(sortKey===th.dataset.k)sortDir*=-1; else {sortKey=th.dataset.k;sortDir=1;} draw();});
   $("#tbl").querySelectorAll("tr[data-stem]").forEach(tr=>tr.onclick=()=>show(tr.dataset.stem));
 }
+// The reference must be the SAME LENGTH as the arm: a 57-frame window arm
+// against the window cut, a full-length H3 arm (124 / 73 frames) against the
+// full-length source or baseline. Otherwise the pair loops on different periods
+// and the A side is simply the wrong clip (operator, 2026-08-21). A manual pick
+// in the dropdown is kept when its length matches; the retime pass has no
+// source rows, so it keeps whatever is selected.
+function refFor(B){
+  const p=pool(), cur=ROWS.find(r=>r.stem===ref);
+  if(cur&&cur.frames===B.frames) return cur;
+  const same=r=>r.stem!==B.stem&&r.frames===B.frames;
+  return p.find(r=>same(r)&&r.model==="reference")
+      || p.find(r=>same(r)&&r.state==="source")
+      || p.find(r=>same(r)&&/baseline/.test(r.label||""))
+      || cur;
+}
 function show(stem){
   if(stem===ref) return;
-  const A=ROWS.find(r=>r.stem===ref), B=ROWS.find(r=>r.stem===stem);
+  const B=ROWS.find(r=>r.stem===stem), A=refFor(B);
+  if(A&&A.stem!==ref){ ref=A.stem; draw(); }
   $("#player").innerHTML=`<div class=cmp data-a="media/${A.stem}.mp4" data-b="media/${B.stem}.mp4"
      data-la="${A.stem}" data-lb="${B.stem}"></div>`;
   ReviewPlayer.rescan();
