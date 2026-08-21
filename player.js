@@ -170,12 +170,16 @@
       // video: the container duration takes the max, so the pair loops on
       // DIFFERENT periods and drifts by that difference every wrap. Cheap
       // insurance regardless of how the files were muxed.
+      // Only for pairs of the SAME length: forcing a 124-frame B onto a
+      // 57-frame A's clock replays B's first 2.4 s forever (seen 2026-08-21).
+      // Threshold 0.1 s = 2+ frames at 24 fps; one frame would seek every
+      // tick and stutter on its own.
       u.resync=setInterval(function(){
         if(!u.live||u.va.paused) return;
         var da=u.va.duration||0, db=u.vb.duration||0;
-        if(!da||!db) return;
-        var ta=u.va.currentTime%da, tb=u.vb.currentTime%db;
-        if(Math.abs(ta-tb)>0.04) u.vb.currentTime=ta;
+        if(!da||!db||Math.abs(da-db)>0.08) return;
+        var ta=u.va.currentTime, tb=u.vb.currentTime;
+        if(Math.abs(ta-tb)>0.1 && Math.abs(ta-tb)<da-0.2) u.vb.currentTime=ta;
       },500);
       va.addEventListener("timeupdate",function(){
         if(!u.dur) return;
