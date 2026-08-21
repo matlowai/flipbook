@@ -37,6 +37,7 @@
       try{ u.va.pause(); u.vb.pause(); }catch(e){}
       [u.va,u.vb].forEach(function(v){ if(!v) return;
         v.removeAttribute("src"); try{ v.load(); }catch(e){} });
+      if(u.resync){ clearInterval(u.resync); u.resync=null; }
       host.innerHTML=""; shelf.style.display="";
       u.live=false; u.va=u.vb=null;
       if(open===u) open=null;
@@ -164,6 +165,18 @@
       };
       close.onclick=teardown;
       va.addEventListener("loadedmetadata",function(){ u.dur=va.duration; });
+      // Continuous B-sync. The original assumption - "same-duration clips wrap
+      // together on loop" - fails whenever a clip's audio is longer than its
+      // video: the container duration takes the max, so the pair loops on
+      // DIFFERENT periods and drifts by that difference every wrap. Cheap
+      // insurance regardless of how the files were muxed.
+      u.resync=setInterval(function(){
+        if(!u.live||u.va.paused) return;
+        var da=u.va.duration||0, db=u.vb.duration||0;
+        if(!da||!db) return;
+        var ta=u.va.currentTime%da, tb=u.vb.currentTime%db;
+        if(Math.abs(ta-tb)>0.04) u.vb.currentTime=ta;
+      },500);
       va.addEventListener("timeupdate",function(){
         if(!u.dur) return;
         scrub.value=Math.round(va.currentTime/u.dur*1000);

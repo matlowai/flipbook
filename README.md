@@ -12,6 +12,8 @@ checkpoint size and PSNR against the selected reference.
 
 - `index.html` — the comparison surface
 - `crest_map.html` — per-tensor quantisation difficulty across a model's layers
+- `derope.html` — the de-rope A/B deck: LTX-2.5 as a dilate-and-upscale pass
+  against H3's own de-rope, with the staircase, alternation and detail rulers
 
 ## Notes on reading the numbers
 
