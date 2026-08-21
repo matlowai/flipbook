@@ -70,6 +70,10 @@ const $=s=>document.querySelector(s);
 let scene="panrun", pass="1x", flt="all", ref=null, sortKey="dn", sortDir=1;
 const fmt=(v,n=3)=>v===null||v===undefined?"&mdash;":(typeof v==="number"?v.toFixed(n):v);
 const cls=v=>v===null||v===undefined?"":(v<0.72?"g":v<0.85?"o":"r");
+// Display name: model family first so the dropdown and the table read at a
+// glance (operator 2026-08-21): "h3 base", "h3 turbo", "ltx25", "source".
+const FAM={"H3":"h3 base","H3 turbo":"h3 turbo","LTX-2.5":"ltx25","reference":"source"};
+const disp=r=>(FAM[r.model]||r.model.toLowerCase())+" · "+r.stem;
 
 function pool(){return ROWS.filter(r=>r.scene===scene&&r.pas===pass
   &&(flt==="all"||r.state==="deroped"||r.state==="source"));}
@@ -88,7 +92,7 @@ function fillScene(){
 }
 function fillRef(){
   const p=pool();
-  $("#ref").innerHTML=p.map(r=>`<option value="${r.stem}">${r.stem}</option>`).join("");
+  $("#ref").innerHTML=p.map(r=>`<option value="${r.stem}">${disp(r)}</option>`).join("");
   if(!p.some(r=>r.stem===ref)) ref=defaultRef();
   $("#ref").value=ref||"";
 }
@@ -103,7 +107,7 @@ function draw(){
               ["psnr","psnr dB"],["audio","audio vs src"],["wall","wall s"],["vram","peak GiB"],["base","base model"]];
   $("#tbl").innerHTML="<thead><tr>"+cols.map(([k,l])=>`<th data-k="${k}">${l}</th>`).join("")
     +"</tr></thead><tbody>"+p.map(r=>`<tr data-stem="${r.stem}" class="${r.stem===ref?'isref':''}">
-      <td>${r.stem}${r.label?' <span class=hint>'+r.label+'</span>':''}</td>
+      <td>${disp(r)}${r.label?' <span class=hint>'+r.label+'</span>':''}</td>
       <td>${r.model}</td><td>${r.d??"&mdash;"}</td><td>${r.dn??"&mdash;"}</td>
       <td class="${cls(r.stair)}">${fmt(r.stair)}</td>
       <td>${fmt(r.altcam)}</td><td>${fmt(r.detail)}</td><td>${fmt(r.psnr,2)}</td>
@@ -131,26 +135,41 @@ function refFor(B){
       || p.find(r=>same(r)&&/baseline/.test(r.label||""))
       || cur;
 }
-function show(stem){
+let cur=null;   // the B side currently in the player
+function show(stem, forceRef){
   if(stem===ref) return;
-  const B=ROWS.find(r=>r.stem===stem), A=refFor(B);
-  if(A&&A.stem!==ref){ ref=A.stem; draw(); }
+  const B=ROWS.find(r=>r.stem===stem), A=forceRef?ROWS.find(r=>r.stem===ref):refFor(B);
+  if(!B||!A) return;
+  if(A.stem!==ref){ ref=A.stem; draw(); }
+  cur=stem;
   $("#player").innerHTML=`<div class=cmp data-a="media/${A.stem}.mp4" data-b="media/${B.stem}.mp4"
-     data-la="${A.stem}" data-lb="${B.stem}"></div>`;
+     data-la="${disp(A)}" data-lb="${disp(B)}"></div>`;
   ReviewPlayer.rescan();
   $("#player").querySelector(".shelf").click();
   $("#player").scrollIntoView({block:"nearest"});
 }
-$("#scene").onchange=e=>{scene=e.target.value;ref=null;ReviewPlayer.closeOpen();draw();};
-$("#ref").onchange=e=>{ref=e.target.value;draw();};
+// A pair is open from the start, side by side (operator 2026-08-21): the
+// scene's headline turbo arm against its full-length baseline when it exists,
+// otherwise the first de-roped row.
+function openDefault(){
+  const p=pool(); ref=defaultRef();
+  const want=p.find(r=>r.stem==="panrun_ref_v11r28_recovered")
+          || p.find(r=>r.state==="deroped"&&r.stem!==ref)
+          || p.find(r=>r.stem!==ref);
+  cur=null; draw(); if(want) show(want.stem);
+}
+$("#scene").onchange=e=>{scene=e.target.value;ref=null;ReviewPlayer.closeOpen();openDefault();};
+// The dropdown is an explicit pick: re-open the current pair with THAT reference,
+// whatever its length (the length matching only applies to row clicks).
+$("#ref").onchange=e=>{ref=e.target.value;draw();if(cur&&cur!==ref){const c=cur;cur=null;ReviewPlayer.closeOpen();show(c,true);}};
 document.querySelectorAll("[data-pass]").forEach(b=>b.onclick=()=>{
   pass=b.dataset.pass;ref=null;
   document.querySelectorAll("[data-pass]").forEach(x=>x.classList.toggle("on",x===b));
-  ReviewPlayer.closeOpen();draw();});
+  ReviewPlayer.closeOpen();openDefault();});
 document.querySelectorAll("[data-flt]").forEach(b=>b.onclick=()=>{
   flt=b.dataset.flt;
   document.querySelectorAll("[data-flt]").forEach(x=>x.classList.toggle("on",x===b));
   draw();});
 $("#closeall").onclick=()=>ReviewPlayer.closeOpen();
-fillScene(); draw();
+fillScene(); ReviewPlayer.setMode("side"); openDefault();
 </script>
