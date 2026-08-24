@@ -29,6 +29,7 @@ tr:hover td{background:var(--bg2)}tr.sel td:first-child{box-shadow:inset 3px 0 v
 .spark{padding:0 10px 8px}.spark svg{width:100%;height:36px;display:block}
 #h2h{background:var(--bg2);border:1px solid var(--grid);border-radius:10px;padding:12px;margin:12px 0}
 #h2h .pane{display:grid;grid-template-columns:1fr 1fr;gap:10px;position:relative}
+#h2h .pane.stack{grid-template-columns:1fr}
 #ovl{position:absolute;top:8px;right:10px;z-index:6;display:flex;gap:8px;align-items:center;font:15px ui-monospace,monospace;color:#fff;text-shadow:0 1px 4px #000;pointer-events:none}
 #blip{display:inline-block;width:16px;height:16px;border-radius:50%;opacity:0;transition:opacity .12s;box-shadow:0 0 8px 2px rgba(0,0,0,.5)}
 #h2h .pane.wipe{display:block;position:relative;aspect-ratio:864/480;background:#000}
@@ -95,6 +96,8 @@ video.audioon{box-shadow:0 0 0 3px var(--pick)}
  <div class="h2hbar" style="margin-top:8px">
   <div id="tl" style="flex:1;min-width:260px;height:84px"><canvas id="tlc" style="width:100%;height:100%;display:block;cursor:crosshair"></canvas></div>
   <span class="small" id="tnum" style="min-width:170px;font-variant-numeric:tabular-nums">0.00 s &#183; frame 0</span>
+  <button id="fprev" title="step one frame back (left arrow)">&#8249; f</button>
+  <button id="fnext" title="step one frame forward (right arrow)">f &#8250;</button>
   <button id="lin" title="set loop start at the playhead (i)">&#8970; in</button>
   <button id="lout" title="set loop end at the playhead (o)">out &#8971;</button>
   <button id="lclear" title="reset brackets to the full clip">&#8634; full</button>
@@ -287,7 +290,11 @@ function tlMove(e){if(!tlDrag)return;const t=tlT(e.offsetX);
 TL.addEventListener("pointermove",tlMove);
 TL.addEventListener("pointerup",()=>tlDrag=null);
 TL.addEventListener("dblclick",()=>{loopA=0;loopB=dur()||null;});
-function loopTick(){if(looping&&loopA!=null&&loopB!=null){const t=VA().currentTime;if(t>loopB+0.02||t<loopA-0.35)seekAll(loopA);}}
+function loopTick(){if(looping&&!VA().paused&&loopA!=null&&loopB!=null){const t=VA().currentTime;if(t>loopB+0.02||t<loopA-0.35)seekAll(loopA);}}
+function stepF(d){const v=VA();v.pause();VB().pause();
+ const f=Math.max(0,Math.round(v.currentTime*FPS-0.5)+d);
+ seekAll(Math.min((f+0.5)/FPS,(dur()||1e9)-0.001));}
+$("#fprev").onclick=()=>stepF(-1);$("#fnext").onclick=()=>stepF(1);
 (function tlRaf(){tickCross();drawTL();drawOvl();requestAnimationFrame(tlRaf);})();
 window.addEventListener("resize",tlResize);setTimeout(tlResize,50);
 $("#lin").onclick=()=>{loopA=VA().currentTime;if(loopB!=null&&loopB<=loopA)loopB=null;};
@@ -311,7 +318,14 @@ document.querySelectorAll("#hearseg button").forEach(b=>b.onclick=()=>{$("#hear"
 $("#play").onclick=()=>{if(VA().paused){VB().currentTime=VA().currentTime;VA().play();VB().play();}else{VA().pause();VB().pause();}};
 $("#restart").onclick=()=>{VA().currentTime=0;VB().currentTime=0;VA().play();VB().play();};
 $("#flip").onclick=()=>{[A,B]=[B,A];loadAB();};
-$("#mode").onclick=()=>{wipeMode=!wipeMode;$("#mode").innerHTML=wipeMode?"&#9706; side by side":"&#9707; wipe";$("#mode").classList.toggle("on",wipeMode);$("#wipelab").style.display=wipeMode?"":"none";$("#pane").classList.toggle("wipe",wipeMode);};
+let paneMode="side";
+$("#mode").onclick=()=>{paneMode=paneMode=="side"?"wipe":paneMode=="wipe"?"stack":"side";
+ wipeMode=paneMode=="wipe";
+ $("#mode").innerHTML=paneMode=="side"?"&#9707; wipe":paneMode=="wipe"?"&#9636; stack":"&#9706; side by side";
+ $("#mode").classList.toggle("on",paneMode!="side");
+ $("#wipelab").style.display=wipeMode?"":"none";
+ $("#pane").classList.toggle("wipe",wipeMode);
+ $("#pane").classList.toggle("stack",paneMode=="stack");};
 function syncPair(m,sl){if(sl.readyState<3)return;
  const d=m.currentTime-sl.currentTime,ad=Math.abs(d);
  if(ad>0.5){sl.currentTime=m.currentTime;sl.playbackRate=1;}
@@ -325,7 +339,7 @@ function bindSync(){const a=$("#va"),b=$("#vb");const hearing=()=>$("#hear").val
 $("#wipe").oninput=e=>{$("#pane").style.setProperty("--w",e.target.value+"%");};
 document.addEventListener("keydown",e=>{if(e.target.tagName=="TEXTAREA"||e.target.tagName=="SELECT")return;
  if(e.key==" "&&document.activeElement.tagName!="VIDEO"){e.preventDefault();$("#play").click();}
- if(e.key=="f"){$("#flip").click();}if(e.key=="i"){$("#lin").click();}if(e.key=="o"){$("#lout").click();}if(e.key=="1"){$("#hear").value="a";applyHear();}if(e.key=="2"){$("#hear").value="b";applyHear();}});
+ if(e.key=="f"){$("#flip").click();}if(e.key=="i"){$("#lin").click();}if(e.key=="o"){$("#lout").click();}if(e.key=="ArrowLeft"){e.preventDefault();stepF(e.shiftKey?-10:-1);}if(e.key=="ArrowRight"){e.preventDefault();stepF(e.shiftKey?10:1);}if(e.key=="1"){$("#hear").value="a";applyHear();}if(e.key=="2"){$("#hear").value="b";applyHear();}});
 $("#grp").onchange=render;
 $("#hoverplay").onclick=()=>{hover=!hover;$("#hoverplay").classList.toggle("on",hover);};
 $("#onlysel").onclick=()=>{onlySel=!onlySel;$("#onlysel").classList.toggle("on",onlySel);render();};
