@@ -12,6 +12,10 @@ checkpoint size and PSNR against the selected reference.
 
 - `index.html` — the comparison surface
 - `crest_map.html` — per-tensor quantisation difficulty across a model's layers
+- `trueclock.html` - pick the clock: 22 hybrid RoPE-clock arms for the de-rope's
+  time-dilated span (stock clock plays it accelerated; TrueClock fixes the speed
+  but pays in seam flash and jitter). Two candidates survive the dose ladder;
+  loop the regenerated window and tell us which you'd ship.
 - `derope.html` — the de-rope A/B deck: LTX-2.5 as a dilate-and-upscale pass
   against H3's own de-rope, with the staircase, alternation and detail rulers.
   Every row carries its ComfyUI workflow (`graphs/`): copy and paste it on the
