@@ -13,8 +13,10 @@
     if(c.dataset.pinit) return;
     c.dataset.pinit="1";
     var a=c.dataset.a, b=c.dataset.b;
-    var pa=a.replace(/^media\//,"posters/").replace(/\.mp4$/,".jpg");
-    var pb=b.replace(/^media\//,"posters/").replace(/\.mp4$/,".jpg");
+    // posters: explicit data-pa/data-pb win (a page whose media lives on another
+    // origin cannot use the relative rewrite below), else the local convention.
+    var pa=c.dataset.pa||a.replace(/^media\//,"posters/").replace(/\.mp4$/,".jpg");
+    var pb=c.dataset.pb||b.replace(/^media\//,"posters/").replace(/\.mp4$/,".jpg");
 
     // shelf: two still frames, ZERO video elements until asked
     var shelf=document.createElement("div");
